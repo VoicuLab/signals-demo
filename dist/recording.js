@@ -48,6 +48,7 @@ function numberCell(value, header, line) {
   if (!text || !DECIMAL.test(text)) throw new Error(`Row ${line}: ${header} must contain a numeric value.`);
   const result = Number(text);
   if (!Number.isFinite(result)) throw new Error(`Row ${line}: ${header} must be finite.`);
+  if (Math.abs(result) > 1e100) throw new Error(`Row ${line}: ${header} exceeds the recorder's numeric range.`);
   return result;
 }
 
@@ -81,6 +82,7 @@ export function parseRecordingCsv(text, { capacity = 24000 } = {}) {
     const t = numberCell(cells[timeIndex], 'time_s', line);
     const v = numberCell(cells[voltageIndex], 'voltage_V', line);
     if (t < 0) throw new Error(`Row ${line}: time_s must be nonnegative.`);
+    if (t > 1e12) throw new Error(`Row ${line}: time_s exceeds the supported timestamp range (0–1e12 seconds).`);
     if (t <= previousTime) throw new Error(`Row ${line}: time_s must strictly increase; duplicate or decreasing timestamps are not allowed.`);
     const i = currentIndex >= 0 ? numberCell(cells[currentIndex], 'current_A', line) : v / 20;
     const p = powerIndex >= 0 ? numberCell(cells[powerIndex], 'power_W', line) : v * i;

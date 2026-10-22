@@ -4,12 +4,12 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="An electrical engineering bench with a scrolling digital strip-chart recorder and simulated signals.">
   <title>Signal Lab · Electrical Engineering</title>
-  <link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
+  <link rel="stylesheet" href="styles.css"><script type="module" src="app.js"></script>
 </head>
 <body data-chart-style="paper">
 <aside class="rail"><a class="brand" href="./" aria-label="Signal Lab home">∿</a><span class="rail-label">WORKBENCH</span><button class="rail-item active" title="Electrical engineering">⌁<span>Electrical</span></button><div class="rail-bottom"><span class="local-dot"></span> BROWSER SIMULATION</div></aside>
 <main>
-  <header><div class="breadcrumb">WORKBENCH <span>/</span> ELECTRICAL ENGINEERING</div><div class="session"><span class="local-dot"></span> LOCAL SIMULATION <span class="divider">|</span> <time id="clock"></time></div></header>
+  <header><div class="breadcrumb">WORKBENCH <span>/</span> ELECTRICAL ENGINEERING</div><div class="session"><span class="local-dot"></span> <span id="data-mode-label">LOCAL SIMULATION</span> <span class="divider">|</span> <time id="clock"></time></div></header>
   <section class="intro"><div><div class="eyebrow">ELECTRICAL ENGINEERING <span>01</span></div><h1>The signal bench<span>.</span></h1><p>A live view of the invisible. Explore electrical signals as they unfold.</p></div><div class="recording-file-actions"><label class="button import-button">Open recording CSV<input id="import-recording" aria-label="Open recording CSV" type="file" accept=".csv,text/csv" aria-describedby="import-help"></label><button class="button secondary" id="export">↗ Export recording</button></div></section>
   <p class="import-help" id="import-help">Open a local CSV with <code>time_s,voltage_V</code>; optional columns: <code>current_A,power_W</code>. Imported values stay in this browser.</p>
   <section class="metrics" aria-label="Signal measurements">
