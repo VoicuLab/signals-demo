@@ -1,0 +1,13 @@
+[Unit]
+Description=Signal Lab local dashboard
+
+[Service]
+Type=simple
+WorkingDirectory=/home/v/ctrl-units/projects/electrical-engineering
+ExecStart=/home/v/ctrl-units/projects/electrical-engineering/start.sh
+Restart=on-failure
+RestartSec=2
+MemoryMax=128M
+
+[Install]
+WantedBy=default.target
