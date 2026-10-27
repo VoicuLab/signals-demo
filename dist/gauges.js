@@ -61,7 +61,9 @@ export class Gauge {
     // Small dials label every k-th major tick so numbers never collide; a compass keeps N/E/S/W.
     const majorGap = r * 0.58 * Math.abs(spec.to - spec.from) / (spec.max - spec.min) * spec.major * Math.PI / 180;
     let stride = 1;
-    while (majorGap * stride < fontSize * 2.6 || (spec.wrap && 90 % (spec.major * stride))) stride++;
+    const widest = Math.max(String(spec.min).length, String(spec.max - spec.major).length);
+    const needed = fontSize * (0.55 * widest + 0.6);
+    while (majorGap * stride < needed || (spec.wrap && 90 % (spec.major * stride))) stride++;
     for (let step = 0; step <= steps; step++) {
       const value = spec.min + step * spec.minor;
       if (spec.wrap && value >= spec.max) break;
