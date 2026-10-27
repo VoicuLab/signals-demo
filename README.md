@@ -1,5 +1,13 @@
 # Electrical Engineering · Signal Lab
 
+## Run it
+
+```bash
+./run_signal_app            # or: python3 run_signal_app.py
+```
+
+This serves `dist/` on this computer only (127.0.0.1) and opens the page in your browser. It needs only Python 3, with no install step. If port 8770 is busy it picks a free port and prints the address. Ctrl+C stops it. Options: `--port N`, `--no-browser`.
+
 Local digital strip-chart recorder at **http://localhost:8770/**. No external assets, analytics, remote AI, or connected instrument. The installed `signal-lab.service` serves `dist/` on loopback; restart with `systemctl --user restart signal-lab.service`. This is buildless HTML/ES modules: edit the durable tracked files and refresh. All imports stay in the browser.
 
 ## Traces and display
