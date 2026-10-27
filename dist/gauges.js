@@ -58,6 +58,10 @@ export class Gauge {
     const steps = Math.round((spec.max - spec.min) / spec.minor);
     const fontSize = Math.max(8, Math.round(r * (spec.wrap ? 0.12 : 0.14)));
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // Small dials label every k-th major tick so numbers never collide; a compass keeps N/E/S/W.
+    const majorGap = r * 0.58 * Math.abs(spec.to - spec.from) / (spec.max - spec.min) * spec.major * Math.PI / 180;
+    let stride = 1;
+    while (majorGap * stride < fontSize * 2.6 || (spec.wrap && 90 % (spec.major * stride))) stride++;
     for (let step = 0; step <= steps; step++) {
       const value = spec.min + step * spec.minor;
       if (spec.wrap && value >= spec.max) break;
@@ -66,15 +70,15 @@ export class Gauge {
       const inner = r * (major ? 0.72 : 0.8);
       ctx.strokeStyle = major ? palette.tick : palette.minor; ctx.lineWidth = major ? Math.max(1.2, r * 0.02) : 0.8;
       ctx.beginPath(); ctx.moveTo(cx + cos * inner, cy + sin * inner); ctx.lineTo(cx + cos * r * 0.88, cy + sin * r * 0.88); ctx.stroke();
-      if (major) {
+      if (major && Math.round((value - spec.min) / spec.major) % stride === 0) {
         const label = spec.wrap && COMPASS[value] ? COMPASS[value] : String(value);
         ctx.fillStyle = palette.text; ctx.font = (spec.wrap && COMPASS[value] ? '600 ' : '') + fontSize + 'px monospace';
         ctx.fillText(label, cx + cos * r * 0.58, cy + sin * r * 0.58);
       }
     }
     ctx.fillStyle = palette.muted; ctx.font = Math.max(7, Math.round(r * 0.09)) + 'px monospace';
-    ctx.fillText(spec.title, cx, cy - r * 0.27);
-    if (!spec.wrap) ctx.fillText(spec.unit, cx, cy + r * 0.4);
+    // The caption under each dial names it; tiny faces skip the printed title and unit.
+    if (r >= 70) { ctx.fillText(spec.title, cx, cy - r * 0.27); if (!spec.wrap) ctx.fillText(spec.unit, cx, cy + r * 0.4); }
     if (this.shown === null) {
       ctx.fillStyle = palette.muted; ctx.fillText('NO DATA', cx, cy + r * 0.14);
     } else {
