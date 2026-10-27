@@ -53,8 +53,14 @@ export class InstrumentSource {
     // Exact RL update for a held voltage over dt; ideal mode retains a resistor.
     const decay = Math.exp(-RESISTANCE * dt / INDUCTANCE);
     this.current = instrument ? decay * this.current + (1 - decay) * v / RESISTANCE : v / RESISTANCE;
-    return { t: this.time, v, i: this.current, p: v * this.current };
+    return { t: this.time, v, i: this.current, p: v * this.current, ...simulatedPointing(this.time) };
   }
+}
+
+// Synthetic antenna pointing for the dials: a slow azimuth slew with a bobbing altitude.
+export function simulatedPointing(t) {
+  const az = 40 + 9 * t + 25 * Math.sin(t * 0.11);
+  return { alt: 42 + 26 * Math.sin(t * 0.17) + 4 * Math.sin(t * 0.9 + 1), az: ((az % 360) + 360) % 360 };
 }
 
 // Trapezoidal integration of recorded measurements, preserving nonuniform times.

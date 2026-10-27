@@ -1,5 +1,6 @@
 import { InstrumentSource, SAMPLE_RATE as RATE, measuredMetrics } from './signal-model.js';
 import { parseRecordingCsv } from './recording.js';
+import { GAUGES, Gauge, compassPoint } from './gauges.js';
 
 const $ = id => document.getElementById(id);
 const CAPACITY = RATE * 120;
@@ -18,6 +19,8 @@ let width = 0, height = 0;
 const cursorReading = document.createElement('output');
 cursorReading.className = 'cursor-reading'; cursorReading.id = 'cursor-reading'; cursorReading.hidden = true;
 canvas.parentElement.append(cursorReading);
+const gauges = GAUGES.map(spec => new Gauge(document.querySelector(`[data-gauge="${spec.key}"]`), spec));
+let signalLevel = null;
 
 function sampleAt(index) { return buffer[(head - count + index + CAPACITY) % CAPACITY]; }
 function append(sample) {
@@ -122,7 +125,8 @@ function draw() {
     for (const sample of visible) if (Math.abs(sample.t - hoverTime) < Math.abs(nearest.t - hoverTime)) nearest = sample;
     const x = left + (nearest.t - start) / state.window * plotWidth;
     ctx.strokeStyle = palette.text; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.setLineDash([]);
-    cursorReading.hidden = false; cursorReading.textContent = short(nearest.t) + ' s · ' + short(nearest.v) + ' V · ' + short(nearest.i) + ' A · ' + short(nearest.p) + ' W';
+    cursorReading.hidden = false; cursorReading.textContent = short(nearest.t) + ' s · ' + short(nearest.v) + ' V · ' + short(nearest.i) + ' A · ' + short(nearest.p) + ' W'
+      + (nearest.alt != null ? ' · alt ' + nearest.alt.toFixed(1) + '°' : '') + (nearest.az != null ? ' · az ' + nearest.az.toFixed(1) + '°' : '');
   }
 }
 canvas.addEventListener('pointermove', event => {
@@ -137,6 +141,11 @@ function updateMetrics() {
   $('voltage').textContent = metrics ? metrics.voltage.toFixed(2) : '—';
   $('current').textContent = metrics ? metrics.current.toFixed(3) : '—';
   $('power').textContent = metrics ? metrics.power.toFixed(2) : '—';
+  signalLevel = metrics ? 20 * Math.log10(Math.max(metrics.voltage, 1e-6)) : null;
+  const last = count ? sampleAt(count - 1) : null;
+  $('gauge-alt').textContent = last?.alt != null ? last.alt.toFixed(1) + '°' : 'No data';
+  $('gauge-az').textContent = last?.az != null ? last.az.toFixed(1) + '° ' + compassPoint(last.az) : 'No data';
+  $('gauge-level').textContent = signalLevel !== null ? signalLevel.toFixed(1) + ' dBV' : '—';
   $('samples').textContent = total.toLocaleString();
   const minutes = Math.floor(state.time / 60), seconds = state.time % 60;
   $('elapsed').textContent = String(minutes).padStart(2, '0') + ':' + seconds.toFixed(2).padStart(5, '0');
@@ -199,7 +208,9 @@ function updateControls() {
   modelNote.textContent = csv ? 'Local file only: ' + derived + '. No instrument is connected.' : state.mode === 'instrument' ? 'Synthetic RL model: L di/dt + R i = V. Baseline drift and decaying transients are simulated; this is not a measured recording.' : 'Virtual 20 Ω resistor: I = V/R, P = V×I. No instrument is connected.';
   const currentRow = document.querySelector('[data-channel="1"]').closest('label').querySelector('small');
   currentRow.textContent = csv ? (imported.providedCurrent ? 'Original CSV values · amperes' : 'Derived I = V/20 · amperes') : state.mode === 'instrument' ? 'Lagging RL response · amperes' : 'I = V/R · amperes';
-  document.querySelector('.small-pill').textContent = csv ? 'IMPORTED CSV' : 'SIMULATED';
+  document.querySelector('.channels .small-pill').textContent = csv ? 'IMPORTED CSV' : 'SIMULATED';
+  const pointingInFile = csv && (imported.providedAltitude || imported.providedAzimuth);
+  $('gauge-source').textContent = !csv ? 'SIMULATED POINTING' : pointingInFile ? 'IMPORTED CSV' : 'CSV · NO POINTING';
   document.querySelectorAll('[data-wave]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.wave === state.waveform)); b.disabled = csv; });
   for (const name of ['frequency', 'amplitude', 'noise']) $(name).disabled = csv;
   $('drift').disabled = csv || state.mode !== 'instrument'; $('transient').disabled = csv || state.mode !== 'instrument';
@@ -230,8 +241,10 @@ $('reset').addEventListener('click', () => {
 });
 $('export').addEventListener('click', () => {
   if (!count) { notify('Start recording before exporting.'); return; }
-  const rows = ['time_s,voltage_V,current_A,power_W'];
-  for (let j = 0; j < count; j++) { const s = sampleAt(j); rows.push([s.t, s.v, s.i, s.p].join(',')); }
+  const columns = [['time_s', 't'], ['voltage_V', 'v'], ['current_A', 'i'], ['power_W', 'p'], ['altitude_deg', 'alt'], ['azimuth_deg', 'az']]
+    .filter(([, key]) => sampleAt(0)[key] != null);
+  const rows = [columns.map(([header]) => header).join(',')];
+  for (let j = 0; j < count; j++) { const s = sampleAt(j); rows.push(columns.map(([, key]) => s[key]).join(',')); }
   const url = URL.createObjectURL(new Blob([rows.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a'); link.href = url; link.download = 'signal-lab-' + (state.mode === 'csv' ? 'imported-' : 'simulated-') + new Date().toISOString().replace(/[:.]/g, '-') + '.csv';
   document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -255,6 +268,9 @@ function frame(now) {
     }
   }
   previousFrame = now; draw();
+  const latest = count ? sampleAt(count - 1) : null;
+  const readings = { alt: latest?.alt ?? null, az: latest?.az ?? null, level: signalLevel };
+  gauges.forEach(gauge => gauge.draw(readings[gauge.spec.key], delta, state.style));
   if (now - previousMetrics > 100) { updateMetrics(); previousMetrics = now; }
   requestAnimationFrame(frame);
 }

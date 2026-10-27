@@ -10,9 +10,13 @@ The default paper recorder uses fine cream/pink graph lines, separate channel ba
 
 **Ideal waveform generator** retains sine, square, triangle and sawtooth sources and the original purely resistive `I=V/20`, `P=V×I` relationships. Frequency is a carrier setpoint, not an estimated measurement. Changing source starts a new recording. The generated history is bounded to 24,000 rows (120 seconds at 200 Hz).
 
+## Instrument dials
+
+Three analog dials sit under the strip chart. **Altitude** (0–90°) and **Azimuth** (0–360° compass) show antenna pointing. In simulated modes this pointing is synthetic: a slow azimuth slew with a bobbing altitude. **Signal level** is CH 01's RMS voltage in dBV (dB re 1 V) over the same 5-second window as the RMS card. Its red zone starts at 23 dBV, about the RMS of a full ±20 V sine. Needles are damped and azimuth turns the short way round. A CSV without pointing columns shows "No data" on those two dials instead of inventing values.
+
 ## Local recording CSV
 
-Open recording CSV accepts numeric `time_s,voltage_V` headers with optional `current_A,power_W`; order may vary, BOM/CRLF/quoted cells are supported. Timestamps must be finite, nonnegative, strictly increasing and at most 1e12 seconds. Measurements must have magnitude ≤1e100 to keep recorder arithmetic finite. Files are limited to 10 MiB. Every row is validated; the latest 24,000 original rows are retained. Imported data is neither resampled nor authenticated as a real measurement.
+Open recording CSV accepts numeric `time_s,voltage_V` headers with optional `current_A,power_W,altitude_deg,azimuth_deg` (altitude within ±90°, azimuth folded into 0–360°); order may vary, BOM/CRLF/quoted cells are supported. Timestamps must be finite, nonnegative, strictly increasing and at most 1e12 seconds. Measurements must have magnitude ≤1e100 to keep recorder arithmetic finite. Files are limited to 10 MiB. Every row is validated; the latest 24,000 original rows are retained. Imported data is neither resampled nor authenticated as a real measurement.
 
 Supplied current and power values are preserved. Missing current explicitly uses V/20 Ω; missing power explicitly uses V×I. The interface identifies these assumptions. Imports initially open paused at their last timestamp; Replay streams the retained original samples at their original timing. Generator controls are disabled for CSV. A malformed file leaves the current recording selected and displays a row-specific error.
 

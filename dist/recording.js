@@ -61,8 +61,8 @@ export function parseRecordingCsv(text, { capacity = 24000 } = {}) {
   if (typeof text !== 'string') throw new Error('Recording CSV must be text.');
   if (!Number.isSafeInteger(capacity) || capacity < 2) throw new Error('Recording capacity must be an integer of at least 2.');
   if (text.startsWith('\uFEFF')) text = text.slice(1);
-  const allowed = new Set(['time_s', 'voltage_V', 'current_A', 'power_W']);
-  let headers, timeIndex, voltageIndex, currentIndex, powerIndex;
+  const allowed = new Set(['time_s', 'voltage_V', 'current_A', 'power_W', 'altitude_deg', 'azimuth_deg']);
+  let headers, timeIndex, voltageIndex, currentIndex, powerIndex, altitudeIndex, azimuthIndex;
   let sourceRows = 0, previousTime = -Infinity;
   const retained = [];
   for (const record of csvRecords(text)) {
@@ -71,10 +71,11 @@ export function parseRecordingCsv(text, { capacity = 24000 } = {}) {
       headers = cells;
       if (new Set(headers).size !== headers.length) throw new Error(`Row ${line}: duplicate CSV headers are not allowed.`);
       for (const header of headers) {
-        if (!allowed.has(header)) throw new Error(`Row ${line}: unsupported header ${JSON.stringify(header)}. Use time_s, voltage_V, and optionally current_A or power_W.`);
+        if (!allowed.has(header)) throw new Error(`Row ${line}: unsupported header ${JSON.stringify(header)}. Use time_s, voltage_V, and optionally current_A, power_W, altitude_deg or azimuth_deg.`);
       }
       timeIndex = headers.indexOf('time_s'); voltageIndex = headers.indexOf('voltage_V');
       currentIndex = headers.indexOf('current_A'); powerIndex = headers.indexOf('power_W');
+      altitudeIndex = headers.indexOf('altitude_deg'); azimuthIndex = headers.indexOf('azimuth_deg');
       if (timeIndex < 0 || voltageIndex < 0) throw new Error(`Row ${line}: time_s and voltage_V headers are required.`);
       continue;
     }
@@ -87,7 +88,11 @@ export function parseRecordingCsv(text, { capacity = 24000 } = {}) {
     const i = currentIndex >= 0 ? numberCell(cells[currentIndex], 'current_A', line) : v / 20;
     const p = powerIndex >= 0 ? numberCell(cells[powerIndex], 'power_W', line) : v * i;
     if (!Number.isFinite(i) || !Number.isFinite(p)) throw new Error(`Row ${line}: derived current or power is outside the finite numeric range.`);
-    retained[sourceRows % capacity] = { t, v, i, p };
+    const alt = altitudeIndex >= 0 ? numberCell(cells[altitudeIndex], 'altitude_deg', line) : null;
+    if (alt !== null && Math.abs(alt) > 90) throw new Error(`Row ${line}: altitude_deg must be between -90 and 90.`);
+    // Azimuth is a bearing; any finite angle is folded into 0–360°.
+    const az = azimuthIndex >= 0 ? ((numberCell(cells[azimuthIndex], 'azimuth_deg', line) % 360) + 360) % 360 : null;
+    retained[sourceRows % capacity] = { t, v, i, p, alt, az };
     sourceRows++; previousTime = t;
   }
   if (!headers) throw new Error('Row 1: the CSV header is missing.');
@@ -95,5 +100,5 @@ export function parseRecordingCsv(text, { capacity = 24000 } = {}) {
   const trimmed = sourceRows > capacity;
   const offset = trimmed ? sourceRows % capacity : 0;
   const samples = offset ? retained.slice(offset).concat(retained.slice(0, offset)) : retained;
-  return { samples, providedCurrent: currentIndex >= 0, providedPower: powerIndex >= 0, sourceRows, trimmed };
+  return { samples, providedCurrent: currentIndex >= 0, providedPower: powerIndex >= 0, providedAltitude: altitudeIndex >= 0, providedAzimuth: azimuthIndex >= 0, sourceRows, trimmed };
 }
